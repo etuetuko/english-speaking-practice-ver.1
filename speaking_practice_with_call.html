@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>English Speaking Practice with Video Call</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .partner { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+    .partner h3 { margin-top: 0; }
+    textarea { width: 100%; height: 80px; }
+    video { width: 45%; margin: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    #videos { display: flex; justify-content: space-around; flex-wrap: wrap; }
+    #status { margin-top: 10px; font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+  <h1>English Speaking Practice with Video Call</h1>
+
+  <div id="partners"></div>
+
+  <div id="videos">
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
+
+  <div id="status">Say: "What are you doing now?"</div>
+
+  <script>
+    const partners = [
+      { name: "John", country: "USA 🇺🇸", timezoneOffset: -5 },
+      { name: "Maria", country: "Brazil 🇧🇷", timezoneOffset: -3 },
+      { name: "Claire", country: "France 🇫🇷", timezoneOffset: +1 },
+      { name: "Jisoo", country: "South Korea 🇰🇷", timezoneOffset: +9 }
+    ];
+
+    function createPartnerCard(partner, index) {
+      const div = document.createElement("div");
+      div.className = "partner";
+      div.innerHTML = `
+        <h3>${partner.name} from ${partner.country}</h3>
+        <p><strong>Local Time:</strong> <span id="time-${index}">Loading...</span></p>
+        <h4>Notes</h4>
+        <textarea placeholder="Write what you heard..."></textarea>
+      `;
+      document.getElementById("partners").appendChild(div);
+    }
+
+    function updateTimes() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      partners.forEach((partner, index) => {
+        const localTime = new Date(utc + (3600000 * partner.timezoneOffset));
+        document.getElementById(`time-${index}`).textContent = localTime.toLocaleTimeString();
+      });
+    }
+
+    partners.forEach(createPartnerCard);
+    setInterval(updateTimes, 1000);
+
+    // Speech Recognition
+    const status = document.getElementById("status");
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.lang = 'en-US';
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+        if (transcript.includes("what are you doing now")) {
+          status.textContent = "✅ Good job! You asked: 'What are you doing now?'";
+          status.style.color = "blue";
+        } else {
+          status.textContent = "❌ Please try again. Say: 'What are you doing now?'";
+          status.style.color = "red";
+        }
+      };
+    } else {
+      status.textContent = "Speech Recognition not supported in this browser.";
+      status.style.color = "gray";
+    }
+
+    // WebRTC Setup
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const peerConnection = new RTCPeerConnection();
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        localVideo.srcObject = stream;
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+      });
+
+    peerConnection.ontrack = event => {
+      remoteVideo.srcObject = event.streams[0];
+    };
+
+    // Placeholder for signaling logic (to be implemented with WebSocket or similar)
+    // Example:
+    // socket.on('offer', data => peerConnection.setRemoteDescription(new RTCSessionDescription(data)));
+    // socket.on('answer', data => peerConnection.setRemoteDescription(new RTCSessionDescription(data)));
+    // socket.on('candidate', data => peerConnection.addIceCandidate(new RTCIceCandidate(data));
+  </script>
+</body>
+</html>
